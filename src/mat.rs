@@ -8,7 +8,7 @@ use std::fmt::{self, Display, Formatter, Debug};
 use std::ops::*;
 use num_traits::{Zero, One, real::Real, FloatConst, NumCast, AsPrimitive};
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
-use crate::ops::MulAdd;
+use crate::ops::{MulAdd, MulAddAssign};
 use crate::vec;
 use crate::geom::{Rect, FrustumPlanes}; // NOTE: Rect is therefore always repr_c here
 use crate::quaternion;
@@ -1285,6 +1285,29 @@ macro_rules! mat_impl_mat {
             where T: Copy + Zero + Add<Output=T> + Mul<Output=T>
         {
             fn mul_assign(&mut self, rhs: T) { *self = *self * rhs; }
+        }
+
+        impl<T: MulAdd<T,T,Output=T>> MulAdd for $Mat<T> {
+            type Output = Self;
+            fn mul_add(self, a: Self, b: Self) -> Self::Output {
+                Self {
+                    $lines: $CVec::new(
+                        $(self.$lines.$get.mul_add(a.$lines.$get, b.$lines.$get)),+
+                    )
+                }
+            }
+        }
+
+        impl<T: MulAddAssign<T,T>> MulAddAssign for $Mat<T> {
+            fn mul_add_assign(&mut self, a: Self, b: Self) {
+                $(self.$lines.$get.mul_add_assign(a.$lines.$get, b.$lines.$get));+;
+            }
+        }
+
+        impl<T> std::iter::Sum for $Mat<T> where T: Add<Output=T> + Zero {
+            fn sum<I>(iter: I) -> Self where I: Iterator<Item=Self> {
+                iter.fold($Mat::zero(), |acc, item| acc + item)
+            }
         }
 
 

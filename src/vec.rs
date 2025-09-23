@@ -129,6 +129,24 @@ macro_rules! vec_impl_trinop {
     }
 }
 
+macro_rules! vec_impl_trinop_assign_vec_vec {
+    ($op:ident, $Rhs1:ty, $Rhs2:ty, ($($namedget:ident)+) ($($get:tt)+) ($lborrow:tt) ($rborrow:tt)) => {
+        #[inline]
+        fn $op(&mut self, a: $Rhs1, b: $Rhs2) {
+            $(self.$get.$op(cond_borrow!($lborrow, a.$get), cond_borrow!($rborrow, b.$get)));+;
+        }
+    }
+}
+
+macro_rules! vec_impl_trinop_assign {
+    (impl $Op:ident for $Vec:ident { $op:tt } ($($namedget:tt)+) ($($get:tt)+)) => {
+        impl<            T> $Op<    $Vec<T>,     $Vec<T>> for     $Vec<T> where     T: $Op<    T,     T> { vec_impl_trinop_assign_vec_vec!{$op,     $Vec<T>,     $Vec<T>, ($($namedget)+) ($($get)+) (move) (move)} }
+        impl<   'b,      T> $Op<    $Vec<T>, &'b $Vec<T>> for     $Vec<T> where     T: $Op<    T, &'b T> { vec_impl_trinop_assign_vec_vec!{$op,     $Vec<T>, &'b $Vec<T>, ($($namedget)+) ($($get)+) (move) (ref)} }
+        impl<'a,         T> $Op<&'a $Vec<T>,     $Vec<T>> for     $Vec<T> where     T: $Op<&'a T,     T> { vec_impl_trinop_assign_vec_vec!{$op, &'a $Vec<T>,     $Vec<T>, ($($namedget)+) ($($get)+) (ref) (move)} }
+        impl<'a, 'b,     T> $Op<&'a $Vec<T>, &'b $Vec<T>> for     $Vec<T> where     T: $Op<&'a T, &'b T> { vec_impl_trinop_assign_vec_vec!{$op, &'a $Vec<T>, &'b $Vec<T>, ($($namedget)+) ($($get)+) (ref) (ref)} }
+    }
+}
+
 macro_rules! vec_impl_binop_commutative {
     ($c_or_simd:ident, impl $Op:ident<$Vec:ident> for T { $op:tt, $simd_op:ident } where T = $($lhs:ident),+) => {
         $(
@@ -436,7 +454,7 @@ macro_rules! vec_impl_vec {
             /// assert_eq!(Vec4::broadcast(5), Vec4::from(5));
             /// ```
             #[inline]
-            pub fn broadcast(val: T) -> Self where T: Copy {
+            pub const fn broadcast(val: T) -> Self where T: Copy {
                 Self::new($({let $namedget = val; $namedget}),+)
             }
 
@@ -1688,6 +1706,7 @@ macro_rules! vec_impl_vec {
         vec_impl_reduce_bool_ops_for_primitive!{$c_or_simd, $Vec, f64 , ($($get)+)}
 
         vec_impl_trinop!{impl MulAdd for $Vec { mul_add } ($($namedget)+) ($($get)+)}
+        vec_impl_trinop_assign!{impl MulAddAssign for $Vec { mul_add_assign } ($($namedget)+) ($($get)+)}
         vec_impl_unop!{ impl Neg for $Vec { neg } ($($get)+)}
         vec_impl_binop!{$c_or_simd, commutative impl Add for $Vec { add, simd_add } ($($get)+)}
         vec_impl_binop!{$c_or_simd,             impl Sub for $Vec { sub, simd_sub } ($($get)+)}
