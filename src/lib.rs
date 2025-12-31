@@ -43,7 +43,7 @@
 
 // See https://github.com/yoanlcq/vek/pull/84
 // Rust 1.59 was complaining: "error: recursion limit reached while expanding reduce_fn! in src/vec.rs:47:69"
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
 extern crate core as std;
 
